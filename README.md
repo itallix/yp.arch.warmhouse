@@ -69,19 +69,28 @@
 
 # Задание 2. Проектирование микросервисной архитектуры
 
-В этом задании вам нужно предоставить только диаграммы в модели C4. Мы не просим вас отдельно описывать получившиеся микросервисы и то, как вы определили взаимодействия между компонентами To-Be системы. Если вы правильно подготовите диаграммы C4, они и так это покажут.
+## Основные микросервисы для ToBe архитектуры:
+
+- User Management (управление пользователями и подписками)
+- Device Management (каталог и управление устройствами)
+- Automation Service (сценарии и автоматизация)
+- Telemetry Service (сбор данных и аналитика)
+- Notification Service (уведомления)
+- Device Communication Service (протокольная абстракция и связь с устройствами)
+- API Gateway (единая точка входа)
 
 **Диаграмма контейнеров (Containers)**
 
-Добавьте диаграмму.
+- [WarmHouse Containers](./diagrams/container/WH-MS-Container.puml)
 
 **Диаграмма компонентов (Components)**
 
-Добавьте диаграмму для каждого из выделенных микросервисов.
+- [User Management Service Components](./diagrams/component/WH-MS-UM-Component.puml)
+- [Device Management Service Components](./diagrams/component/WH-MS-DM-Component.puml)
 
 **Диаграмма кода (Code)**
 
-Добавьте одну диаграмму или несколько.
+- [User Management Service Code](./diagrams/code/WH-MS-UM-Code.puml)
 
 # Задание 3. Разработка ER-диаграммы
 
