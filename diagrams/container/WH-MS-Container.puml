@@ -14,11 +14,11 @@ System_Boundary(smartHome, "Smart Home Ecosystem") {
     Container(apiGateway, "API Gateway", "Kong/AWS API Gateway", "Единая точка входа, маршрутизация, авторизация")
     
     Container(userService, "User Management Service", "Go", "Управление пользователями, аутентификация, подписки")
-    Container(deviceService, "Device Management Service", "Go", "Каталог устройств, управление состоянием")
+    Container(deviceService, "Device Management Service", "NodeJS", "Каталог устройств, управление состоянием")
     Container(commService, "Device Communication Service", "Go", "Протокольная абстракция, связь с устройствами")
     Container(autoService, "Automation Service", "Go", "Сценарии автоматизации, правила")
-    Container(telemetryService, "Telemetry Service", "Go", "Сбор телеметрии, аналитика")
-    Container(notifyService, "Notification Service", "Go", "Push-уведомления, email, SMS")
+    Container(telemetryService, "Telemetry Service", "NodeJS", "Сбор телеметрии, аналитика")
+    Container(notifyService, "Notification Service", "NodeJS", "Push-уведомления, email, SMS")
     
     ContainerDb(userDb, "User Database", "PostgreSQL", "Профили пользователей, подписки")
     ContainerDb(deviceDb, "Device Database", "PostgreSQL", "Каталог устройств, конфигурации")

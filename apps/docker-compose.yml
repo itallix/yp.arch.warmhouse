@@ -19,6 +19,99 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.2.1
+    networks:
+      - smarthome-network
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  kafka:
+    image: confluentinc/cp-kafka:7.2.1
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    networks:
+      - smarthome-network
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      # Single broker configuration - set replication factors to 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      # Auto-create topics
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_NUM_PARTITIONS: 3
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--list", "--bootstrap-server", "localhost:29092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  influxdb:
+    image: influxdb:1.8
+    networks:
+      - smarthome-network
+    ports:
+      - "8086:8086"
+    environment:
+      INFLUXDB_DB: telemetry
+      INFLUXDB_HTTP_ENABLED: true
+
+  telemetry-api:
+    build: ./telemetry_api
+    depends_on:
+      influxdb:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    networks:
+      - smarthome-network
+    environment:
+      KAFKA_BROKER: kafka:29092
+      KAFKA_TOPIC: warmhouse.device.events
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_DB: telemetry
+      INTERVAL_SECS: 30
+      PORT: 8082
+    ports:
+      - "8082:8082"
+
+  device-management:
+    build: ./device_mgmt
+    depends_on:
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    networks:
+      - smarthome-network
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/smarthome
+      KAFKA_BROKER: kafka:29092
+      KAFKA_TOPIC: warmhouse.device.events
+      PORT: 8083
+    ports:
+      - "8083:8083"
 
   temperature-api:
     build:
