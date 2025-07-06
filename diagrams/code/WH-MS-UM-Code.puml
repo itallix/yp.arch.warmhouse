@@ -1,4 +1,4 @@
-@startuml User_Management_Go_Code
+@startuml C4_Code_Go_UserManagementService
 
 package "main" {
   class main {

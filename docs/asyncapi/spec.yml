@@ -1,0 +1,779 @@
+asyncapi: 3.0.0
+info:
+  title: WarmHouse Smart Home Ecosystem API
+  version: 1.2.0
+  description: |-
+    API умного дома WarmHouse позволяет управлять и мониторить экосистему умного дома.
+    
+    ### Основные возможности:
+    
+    * Телеметрия устройств в реальном времени
+    * Удаленное управление устройствами и автоматизация
+    * Интеллектуальные сценарии автоматизации
+    * Уведомления безопасности и алерты
+    * Отслеживание энергопотребления
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    name: Команда разработки WarmHouse
+    email: dev@warmhouse.com
+    url: https://warmhouse.com/developers
+
+defaultContentType: application/json
+
+servers:
+  production:
+    host: kafka.warmhouse.com:9092
+    protocol: kafka-secure
+    description: Продакшн Kafka кластер с SASL аутентификацией
+    security:
+      - $ref: '#/components/securitySchemes/saslScram'
+    tags:
+      - name: env:production
+        description: Продакшн-среда для систем умного дома
+      - name: kind:remote
+        description: Удаленный сервер, управляемый WarmHouse
+      - name: visibility:private
+        description: Ресурс требует аутентификации и авторизации
+  staging:
+    host: kafka-staging.warmhouse.com:9092
+    protocol: kafka-secure
+    description: Среда для тестирования
+    security:
+      - $ref: '#/components/securitySchemes/saslScram'
+    tags:
+      - name: env:staging
+        description: Тестовая среда для интеграционного тестирования
+      - name: kind:remote
+        description: Удаленный тестовый сервер
+      - name: visibility:private
+        description: Ресурс только для авторизованных разработчиков
+
+channels:
+  deviceTelemetry:
+    address: warmhouse.device.telemetry.{userId}.{deviceId}
+    messages:
+      telemetryData:
+        $ref: '#/components/messages/telemetryData'
+    description: Канал для телеметрии умных устройств в реальном времени
+    parameters:
+      userId:
+        $ref: '#/components/parameters/userId'
+      deviceId:
+        $ref: '#/components/parameters/deviceId'
+
+  deviceEvents:
+    address: warmhouse.device.events.{userId}.{deviceId}
+    messages:
+      deviceOnline:
+        $ref: '#/components/messages/deviceOnline'
+      deviceOffline:
+        $ref: '#/components/messages/deviceOffline'
+      deviceError:
+        $ref: '#/components/messages/deviceError'
+    description: Канал для событий статуса устройств (онлайн/офлайн/ошибка)
+    parameters:
+      userId:
+        $ref: '#/components/parameters/userId'
+      deviceId:
+        $ref: '#/components/parameters/deviceId'
+
+  deviceCommands:
+    address: warmhouse.device.commands.{userId}.{deviceId}
+    messages:
+      deviceCommand:
+        $ref: '#/components/messages/deviceCommand'
+      commandResponse:
+        $ref: '#/components/messages/commandResponse'
+    description: Канал для отправки команд устройствам и получения ответов
+    parameters:
+      userId:
+        $ref: '#/components/parameters/userId'
+      deviceId:
+        $ref: '#/components/parameters/deviceId'
+
+  automationEvents:
+    address: warmhouse.automation.events.{userId}
+    messages:
+      automationTriggered:
+        $ref: '#/components/messages/automationTriggered'
+      automationCompleted:
+        $ref: '#/components/messages/automationCompleted'
+      automationFailed:
+        $ref: '#/components/messages/automationFailed'
+    description: Канал для событий сценариев автоматизации
+    parameters:
+      userId:
+        $ref: '#/components/parameters/userId'
+
+  notifications:
+    address: warmhouse.notifications.{userId}
+    messages:
+      securityAlert:
+        $ref: '#/components/messages/securityAlert'
+      maintenanceAlert:
+        $ref: '#/components/messages/maintenanceAlert'
+      energyAlert:
+        $ref: '#/components/messages/energyAlert'
+    description: Канал для уведомлений и алертов пользователя
+    parameters:
+      userId:
+        $ref: '#/components/parameters/userId'
+
+operations:
+  receiveTelemetry:
+    action: receive
+    channel:
+      $ref: '#/channels/deviceTelemetry'
+    summary: Получение телеметрии с умных устройств в реальном времени
+    description: Подписка на потоки телеметрии с датчиков и умных устройств
+    traits:
+      - $ref: '#/components/operationTraits/kafka'
+    messages:
+      - $ref: '#/channels/deviceTelemetry/messages/telemetryData'
+
+  receiveDeviceEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/deviceEvents'
+    summary: Получение событий изменения статуса устройств
+    description: Мониторинг изменений подключения и состояния здоровья устройств
+    traits:
+      - $ref: '#/components/operationTraits/kafka'
+    messages:
+      - $ref: '#/channels/deviceEvents/messages/deviceOnline'
+      - $ref: '#/channels/deviceEvents/messages/deviceOffline'
+      - $ref: '#/channels/deviceEvents/messages/deviceError'
+
+  sendDeviceCommand:
+    action: send
+    channel:
+      $ref: '#/channels/deviceCommands'
+    summary: Отправка команд устройствам умного дома
+    description: Удаленное управление устройствами путем отправки команд
+    traits:
+      - $ref: '#/components/operationTraits/kafka'
+    messages:
+      - $ref: '#/channels/deviceCommands/messages/deviceCommand'
+
+  receiveCommandResponse:
+    action: receive
+    channel:
+      $ref: '#/channels/deviceCommands'
+    summary: Получение ответов на выполнение команд
+    description: Получение обратной связи о статусе выполнения команд
+    traits:
+      - $ref: '#/components/operationTraits/kafka'
+    messages:
+      - $ref: '#/channels/deviceCommands/messages/commandResponse'
+
+  receiveAutomationEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/automationEvents'
+    summary: Получение событий сценариев автоматизации
+    description: Мониторинг выполнения сценариев автоматизации и их результатов
+    traits:
+      - $ref: '#/components/operationTraits/kafka'
+    messages:
+      - $ref: '#/channels/automationEvents/messages/automationTriggered'
+      - $ref: '#/channels/automationEvents/messages/automationCompleted'
+      - $ref: '#/channels/automationEvents/messages/automationFailed'
+
+  receiveNotifications:
+    action: receive
+    channel:
+      $ref: '#/channels/notifications'
+    summary: Получение уведомлений и алертов пользователя
+    description: Получение алертов безопасности, обслуживания и энергопотребления
+    traits:
+      - $ref: '#/components/operationTraits/kafka'
+    messages:
+      - $ref: '#/channels/notifications/messages/securityAlert'
+      - $ref: '#/channels/notifications/messages/maintenanceAlert'
+      - $ref: '#/channels/notifications/messages/energyAlert'
+
+components:
+  messages:
+    telemetryData:
+      name: telemetryData
+      title: Телеметрия устройства
+      summary: Данные датчиков и метрики устройств в реальном времени
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/telemetryPayload'
+
+    deviceOnline:
+      name: deviceOnline
+      title: Событие "Устройство онлайн"
+      summary: Устройство подключилось и доступно
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/deviceEventPayload'
+
+    deviceOffline:
+      name: deviceOffline
+      title: Событие "Устройство офлайн"
+      summary: Устройство отключилось или потеряло связь
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/deviceEventPayload'
+
+    deviceError:
+      name: deviceError
+      title: Событие ошибки устройства
+      summary: Устройство столкнулось с ошибкой
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/deviceErrorPayload'
+
+    deviceCommand:
+      name: deviceCommand
+      title: Команда устройству
+      summary: Команда для выполнения устройством умного дома
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/deviceCommandPayload'
+
+    commandResponse:
+      name: commandResponse
+      title: Ответ на команду
+      summary: Ответ от устройства после выполнения команды
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/commandResponsePayload'
+
+    automationTriggered:
+      name: automationTriggered
+      title: Автоматизация запущена
+      summary: Сценарий автоматизации был запущен
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/automationEventPayload'
+
+    automationCompleted:
+      name: automationCompleted
+      title: Автоматизация завершена
+      summary: Сценарий автоматизации успешно завершен
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/automationCompletedPayload'
+
+    automationFailed:
+      name: automationFailed
+      title: Ошибка автоматизации
+      summary: Сценарий автоматизации не смог выполниться
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/automationFailedPayload'
+
+    securityAlert:
+      name: securityAlert
+      title: Алерт безопасности
+      summary: Уведомление или предупреждение по безопасности
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/alertPayload'
+
+    maintenanceAlert:
+      name: maintenanceAlert
+      title: Алерт обслуживания
+      summary: Уведомление об обслуживании или сервисе устройства
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/alertPayload'
+
+    energyAlert:
+      name: energyAlert
+      title: Энергетический алерт
+      summary: Уведомление о потреблении или эффективности энергии
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: '#/components/schemas/alertPayload'
+
+  schemas:
+    telemetryPayload:
+      type: object
+      required:
+        - deviceId
+        - userId
+        - timestamp
+        - metrics
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор устройства
+        userId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор владельца устройства
+        deviceType:
+          type: string
+          enum: [temperature_sensor, humidity_sensor, motion_sensor, light_sensor, smart_switch, thermostat, camera, door_lock]
+          description: Тип устройства
+        room:
+          type: string
+          description: Помещение, где находится устройство
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        metrics:
+          type: object
+          description: Показания датчиков и метрики устройства
+          additionalProperties:
+            type: number
+          examples:
+            - temperature: 22.5
+              humidity: 45
+              battery_level: 85
+        quality:
+          type: object
+          description: Метрики качества подключения и состояния устройства
+          properties:
+            signalStrength:
+              type: number
+              description: Уровень сигнала в dBm
+            batteryLevel:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Уровень заряда батареи в процентах
+            firmwareVersion:
+              type: string
+              description: Версия прошивки устройства
+
+    deviceEventPayload:
+      type: object
+      required:
+        - deviceId
+        - userId
+        - timestamp
+        - eventType
+        - status
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор устройства
+        userId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор владельца устройства
+        deviceName:
+          type: string
+          description: Читаемое человеком название устройства
+        deviceType:
+          type: string
+          description: Тип устройства
+        room:
+          type: string
+          description: Помещение, где находится устройство
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        eventType:
+          type: string
+          enum: [device_online, device_offline]
+          description: Тип события устройства
+        status:
+          type: string
+          enum: [online, offline, error, unknown]
+          description: Текущий статус устройства
+        reason:
+          type: string
+          enum: [timeout, network_error, device_restart, user_action, maintenance, battery_low]
+          description: Причина смены статуса
+        lastSeen:
+          $ref: '#/components/schemas/timestamp'
+        offlineDuration:
+          type: number
+          description: Длительность отключения в секундах (для онлайн событий)
+
+    deviceErrorPayload:
+      type: object
+      required:
+        - deviceId
+        - userId
+        - timestamp
+        - errorCode
+        - severity
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        deviceName:
+          type: string
+        deviceType:
+          type: string
+        room:
+          type: string
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        errorCode:
+          type: string
+          enum: [SENSOR_CALIBRATION_ERROR, BATTERY_LOW, NETWORK_TIMEOUT, FIRMWARE_ERROR, HARDWARE_FAILURE, TEMPERATURE_OUT_OF_RANGE]
+          description: Конкретный код ошибки
+        errorMessage:
+          type: string
+          description: Читаемое человеком описание ошибки
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Уровень критичности ошибки
+        suggestedAction:
+          type: string
+          enum: [restart_device, replace_battery, schedule_maintenance, contact_support, check_network]
+          description: Рекомендуемое действие для устранения ошибки
+
+    deviceCommandPayload:
+      type: object
+      required:
+        - commandId
+        - deviceId
+        - userId
+        - timestamp
+        - command
+      properties:
+        commandId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор команды
+        deviceId:
+          type: string
+          format: uuid
+          description: Идентификатор целевого устройства
+        userId:
+          type: string
+          format: uuid
+          description: Пользователь, инициировавший команду
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        command:
+          type: string
+          enum: [turn_on, turn_off, set_brightness, set_temperature, set_color, lock, unlock, start_recording, stop_recording]
+          description: Команда для выполнения
+        parameters:
+          type: object
+          description: Параметры команды
+          additionalProperties: true
+          examples:
+            - brightness: 80
+              colorTemperature: 3000
+        timeout:
+          type: integer
+          minimum: 1
+          maximum: 300
+          default: 30
+          description: Таймаут команды в секундах
+        source:
+          type: object
+          description: Информация об источнике команды
+          properties:
+            type:
+              type: string
+              enum: [user, automation, system, schedule]
+            automationId:
+              type: string
+              description: ID автоматизации, если запущена автоматизацией
+
+    commandResponsePayload:
+      type: object
+      required:
+        - commandId
+        - deviceId
+        - userId
+        - timestamp
+        - status
+      properties:
+        commandId:
+          type: string
+          format: uuid
+          description: Идентификатор исходной команды
+        deviceId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        status:
+          type: string
+          enum: [success, failed, timeout, rejected]
+          description: Статус выполнения команды
+        executionTime:
+          type: number
+          description: Время выполнения в секундах
+        errorMessage:
+          type: string
+          description: Описание ошибки при неудаче
+        result:
+          type: object
+          description: Результат выполнения команды
+          additionalProperties: true
+
+    automationEventPayload:
+      type: object
+      required:
+        - automationId
+        - userId
+        - timestamp
+        - eventType
+      properties:
+        automationId:
+          type: string
+          description: Идентификатор сценария автоматизации
+        userId:
+          type: string
+          format: uuid
+        automationName:
+          type: string
+          description: Читаемое человеком название автоматизации
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        eventType:
+          type: string
+          enum: [automation_triggered, automation_executing]
+        trigger:
+          type: object
+          description: Информация о триггере
+          properties:
+            type:
+              type: string
+              enum: [time, device_event, sensor_value, user_action]
+            deviceId:
+              type: string
+              format: uuid
+            parameters:
+              type: object
+              additionalProperties: true
+        conditionsMet:
+          type: boolean
+          description: Были ли выполнены все условия
+        estimatedExecutionTime:
+          type: number
+          description: Ожидаемое время выполнения в секундах
+
+    automationCompletedPayload:
+      type: object
+      required:
+        - automationId
+        - userId
+        - timestamp
+        - status
+        - executionTime
+      properties:
+        automationId:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        automationName:
+          type: string
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        status:
+          type: string
+          enum: [success, failed, partial]
+          description: Общий статус выполнения
+        executionTime:
+          type: number
+          description: Общее время выполнения в секундах
+        actionsExecuted:
+          type: integer
+          description: Количество выполненных действий
+        actionsSuccessful:
+          type: integer
+          description: Количество успешных действий
+        actionsFailed:
+          type: integer
+          description: Количество неудачных действий
+        results:
+          type: array
+          description: Результаты отдельных действий
+          items:
+            type: object
+            properties:
+              actionId:
+                type: string
+              deviceId:
+                type: string
+                format: uuid
+              status:
+                type: string
+                enum: [success, failed, skipped]
+              executionTime:
+                type: number
+
+    automationFailedPayload:
+      type: object
+      required:
+        - automationId
+        - userId
+        - timestamp
+        - errorCode
+      properties:
+        automationId:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        automationName:
+          type: string
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        errorCode:
+          type: string
+          enum: [TRIGGER_ERROR, CONDITION_ERROR, ACTION_ERROR, TIMEOUT, DEVICE_UNAVAILABLE]
+        errorMessage:
+          type: string
+          description: Детальное описание ошибки
+        executionTime:
+          type: number
+        failedAction:
+          type: object
+          description: Информация о неудачном действии
+          properties:
+            actionId:
+              type: string
+            deviceId:
+              type: string
+              format: uuid
+            errorDetails:
+              type: object
+              additionalProperties: true
+
+    alertPayload:
+      type: object
+      required:
+        - alertId
+        - userId
+        - timestamp
+        - alertType
+        - severity
+        - title
+        - message
+      properties:
+        alertId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор алерта
+        userId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор владельца системы
+        timestamp:
+          $ref: '#/components/schemas/timestamp'
+        alertType:
+          type: string
+          enum: [security_alert, maintenance_alert, energy_alert]
+          description: Тип алерта
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Уровень серьезности алерта
+        title:
+          type: string
+          description: Название алерта
+        message:
+          type: string
+          description: Подробное описание алерта
+        source:
+          type: object
+          description: Источник алерта
+          properties:
+            type:
+              type: string
+              enum: [device, automation, system]
+            deviceId:
+              type: string
+              format: uuid
+            automationId:
+              type: string
+        metadata:
+          type: object
+          description: Дополнительные данные о алерте
+          additionalProperties: true
+        recommendedActions:
+          type: array
+          description: Рекомендуемые действия для пользователя
+          items:
+            type: string
+            enum: [change_password, enable_2fa, replace_battery, schedule_maintenance, contact_support, check_network]
+
+    timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 формат времени (например, 2023-10-01T12:00:00Z)
+
+  securitySchemes:
+    saslScram:
+      type: scramSha256
+      description: SASL/SCRAM-SHA-256 аутентификация для Kafka
+
+  parameters:
+    userId:
+      description: Уникальный идентификатор пользователя контролирующего устройство
+    deviceId:
+      description: Уникальный идентификатор устройства в экосистеме WarmHouse
+
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        properties:
+          correlationId:
+            type: string
+            format: uuid
+            description: Correlation ID для отслеживания запроса
+          traceId:
+            type: string
+            description: Trace ID для распределенного трейсинга
+          sourceService:
+            type: string
+            description: Имя сервиса, отправившего сообщение
+            enum: [device-communication-service, device-management-service, automation-service, telemetry-service, notification-service]
+          messageVersion:
+            type: string
+            default: "1.0"
+            description: Версия сообщения для обеспечения совместимости
+
+  operationTraits:
+    kafka:
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            enum:
+              - warmhouse-device-service
+              - warmhouse-automation-service
+              - warmhouse-telemetry-service
+              - warmhouse-notification-service
+              - warmhouse-api-gateway

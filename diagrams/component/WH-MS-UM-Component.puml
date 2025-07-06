@@ -1,4 +1,4 @@
-@startuml User_Management_Components
+@startuml C4_Component_UserManagementService
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
 title Component Diagram - User Management Service

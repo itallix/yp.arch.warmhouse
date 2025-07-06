@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: Automation Service API
+  version: 1.0.0
+  description: API для управления сценариями автоматизации
+servers:
+  - url: https://api.warmhouse.com/v1
+paths:
+  /automations:
+    get:
+      summary: Получить список сценариев автоматизации
+      operationId: getAutomations
+      tags:
+        - Automations
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: enabled
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Список сценариев
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  automations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Automation'
+              examples:
+                success:
+                  value:
+                    automations:
+                      - id: "automation-001"
+                        name: "Утренний сценарий"
+                        enabled: true
+                        trigger:
+                          type: "time"
+                          parameters:
+                            time: "07:00"
+                            days: ["mon", "tue", "wed", "thu", "fri"]
+                        actions:
+                          - type: "device_command"
+                            device_id: "light-001"
+                            command: "turn_on"
+                            parameters:
+                              brightness: 70
+    post:
+      summary: Создать новый сценарий автоматизации
+      operationId: createAutomation
+      tags:
+        - Automations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAutomationRequest'
+            examples:
+              presence_automation:
+                value:
+                  name: "Автоматическое освещение"
+                  trigger:
+                    type: "device_event"
+                    device_id: "motion-sensor-001"
+                    event: "motion_detected"
+                  conditions:
+                    - type: "time_range"
+                      parameters:
+                        start: "18:00"
+                        end: "23:00"
+                  actions:
+                    - type: "device_command"
+                      device_id: "light-001"
+                      command: "turn_on"
+                      parameters:
+                        brightness: 80
+      responses:
+        '201':
+          description: Сценарий создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Automation'
+
+  /automations/{automation_id}:
+    get:
+      summary: Получить сценарий автоматизации
+      operationId: getAutomation
+      tags:
+        - Automations
+      parameters:
+        - name: automation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Сценарий автоматизации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Automation'
+        '404':
+          description: Сценарий не найден
+    
+    put:
+      summary: Обновить сценарий автоматизации
+      operationId: updateAutomation
+      tags:
+        - Automations
+      parameters:
+        - name: automation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAutomationRequest'
+      responses:
+        '200':
+          description: Сценарий обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Automation'
+        '404':
+          description: Сценарий не найден
+
+components:
+  schemas:
+    Automation:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        trigger:
+          $ref: '#/components/schemas/AutomationTrigger'
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AutomationCondition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AutomationAction'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    AutomationTrigger:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [time, device_event, sensor_value]
+        device_id:
+          type: string
+        event:
+          type: string
+        parameters:
+          type: object
+          additionalProperties: true
+    
+    AutomationCondition:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [time_range, device_state, sensor_value]
+        parameters:
+          type: object
+          additionalProperties: true
+    
+    AutomationAction:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [device_command, notification, delay]
+        device_id:
+          type: string
+        command:
+          type: string
+        parameters:
+          type: object
+          additionalProperties: true
+    
+    CreateAutomationRequest:
+      type: object
+      required:
+        - name
+        - trigger
+        - actions
+      properties:
+        name:
+          type: string
+        trigger:
+          $ref: '#/components/schemas/AutomationTrigger'
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AutomationCondition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AutomationAction'
+        enabled:
+          type: boolean
+          default: true
+    
+    UpdateAutomationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        trigger:
+          $ref: '#/components/schemas/AutomationTrigger'
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AutomationCondition'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AutomationAction'

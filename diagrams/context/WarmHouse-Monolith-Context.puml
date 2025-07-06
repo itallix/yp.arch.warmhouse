@@ -1,4 +1,4 @@
-@startuml
+@startuml C4_Context_WarmHouse_Monolith
 !include  https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
 ' Определение элементов системы

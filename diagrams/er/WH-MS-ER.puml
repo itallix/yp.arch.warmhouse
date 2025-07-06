@@ -1,4 +1,4 @@
-@startuml WarmHouse_ER
+@startuml ER_Diagram_CoreEntities
 
 ' Пользователи
 entity "users" {

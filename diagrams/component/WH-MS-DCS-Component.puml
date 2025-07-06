@@ -1,4 +1,4 @@
-@startuml C4_Device_Communication_Service_Components
+@startuml C4_Component_DeviceCommunicationService
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
 title Component Diagram - Device Communication Service
