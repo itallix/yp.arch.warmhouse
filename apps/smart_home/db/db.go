@@ -106,40 +106,6 @@ func (db *DB) GetSensorByID(ctx context.Context, id int) (models.Sensor, error) 
 	return s, nil
 }
 
-// CreateSensor creates a new sensor in the database
-func (db *DB) CreateSensor(ctx context.Context, s models.SensorCreate) (models.Sensor, error) {
-	query := `
-		INSERT INTO sensors (name, type, location, unit, status, last_updated, created_at)
-		VALUES ($1, $2, $3, $4, 'inactive', $5, $5)
-		RETURNING id, name, type, location, value, unit, status, last_updated, created_at
-	`
-
-	now := time.Now()
-	var sensor models.Sensor
-	err := db.Pool.QueryRow(ctx, query,
-		s.Name,
-		s.Type,
-		s.Location,
-		s.Unit,
-		now,
-	).Scan(
-		&sensor.ID,
-		&sensor.Name,
-		&sensor.Type,
-		&sensor.Location,
-		&sensor.Value,
-		&sensor.Unit,
-		&sensor.Status,
-		&sensor.LastUpdated,
-		&sensor.CreatedAt,
-	)
-	if err != nil {
-		return models.Sensor{}, fmt.Errorf("error creating sensor: %w", err)
-	}
-
-	return sensor, nil
-}
-
 // UpdateSensor updates an existing sensor
 func (db *DB) UpdateSensor(ctx context.Context, id int, s models.SensorUpdate) (models.Sensor, error) {
 	// First check if the sensor exists

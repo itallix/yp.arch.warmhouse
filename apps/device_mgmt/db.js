@@ -12,5 +12,14 @@ module.exports = {
     const values = [name, type, location, unit, now];
     const result = await pool.query(query, values);
     return result.rows[0];
+  },
+  getSensorById: async({ id }) => {
+    const query = `
+		  SELECT id, name, type, location, value, unit, status, last_updated, created_at
+		  FROM sensors
+		  WHERE id = $1
+	  `
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
   }
 };

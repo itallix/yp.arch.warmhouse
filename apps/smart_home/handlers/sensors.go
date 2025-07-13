@@ -18,13 +18,15 @@ import (
 type SensorHandler struct {
 	DB                 *db.DB
 	TemperatureService *services.TemperatureService
+	DeviceService      *services.DeviceService
 }
 
 // NewSensorHandler creates a new SensorHandler
-func NewSensorHandler(db *db.DB, temperatureService *services.TemperatureService) *SensorHandler {
+func NewSensorHandler(db *db.DB, temperatureService *services.TemperatureService, deviceService *services.DeviceService) *SensorHandler {
 	return &SensorHandler{
 		DB:                 db,
 		TemperatureService: temperatureService,
+		DeviceService:      deviceService,
 	}
 }
 
@@ -77,7 +79,7 @@ func (h *SensorHandler) GetSensorByID(c *gin.Context) {
 		return
 	}
 
-	sensor, err := h.DB.GetSensorByID(context.Background(), id)
+	sensor, err := h.DeviceService.GetDeviceByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Sensor not found"})
 		return
@@ -136,7 +138,7 @@ func (h *SensorHandler) CreateSensor(c *gin.Context) {
 		return
 	}
 
-	sensor, err := h.DB.CreateSensor(context.Background(), sensorCreate)
+	sensor, err := h.DeviceService.CreateDevice(&sensorCreate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

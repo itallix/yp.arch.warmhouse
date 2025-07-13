@@ -1,4 +1,4 @@
-const { createSensor } = require('../db');
+const { createSensor, getSensorById } = require('../db');
 const { sendDeviceCreated } = require('../kafka');
 
 module.exports = {
@@ -7,8 +7,23 @@ module.exports = {
     res.json({ message: 'All sensors' });
   },
   getSensorById: async (req, res) => {
-    const { id } = req.params;
-    res.json({ message: `Get sensor ${id}` });
+    try {
+      const { id } = req.params;
+
+      const sensor = await getSensorById({ id });
+      
+      if (!sensor) {
+        return res.status(404).json({ 
+          error: 'Not Found',
+          message: `Sensor with id ${id} not found` 
+        });
+      }
+
+      res.json(sensor);
+    } catch (err) {
+      console.error('Error retrieving sensor:', err);
+      res.status(500).json({ error: 'Internal server error' }); 
+    }
   },
   createSensor: async (req, res) => {
     try {
@@ -38,9 +53,5 @@ module.exports = {
     const { id } = req.params;
     const { value } = req.body;
     res.json({ message: `Sensor ${id} value updated to ${value}` });
-  },
-  getTemperatureByLocation: async (req, res) => {
-    const { location } = req.params;
-    res.json({ message: `Temperature for location ${location}` });
   },
 };
