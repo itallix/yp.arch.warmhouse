@@ -1,0 +1,72 @@
+@startuml C4_Container_WarmHouse_Microservices
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Container Diagram - WarmHouse Ecosystem
+
+Person(customer, "Пользователь", "Владелец умного дома")
+Person(partner, "Партнер", "Производитель устройств")
+
+System_Boundary(smartHome, "Smart Home Ecosystem") {
+    Container(mobileApp, "Mobile App", "React Native", "Мобильное приложение для управления умным домом")
+    Container(webApp, "Web App", "React", "Веб-приложение для управления умным домом")
+    Container(partnerApp, "Partner Apps", "Various", "Приложения партнеров для интеграции")
+    
+    Container(apiGateway, "API Gateway", "Kong/AWS API Gateway", "Единая точка входа, маршрутизация, авторизация")
+    
+    Container(userService, "User Management Service", "Go", "Управление пользователями, аутентификация, подписки")
+    Container(deviceService, "Device Management Service", "NodeJS", "Каталог устройств, управление состоянием")
+    Container(commService, "Device Communication Service", "Go", "Протокольная абстракция, связь с устройствами")
+    Container(autoService, "Automation Service", "Go", "Сценарии автоматизации, правила")
+    Container(telemetryService, "Telemetry Service", "NodeJS", "Сбор телеметрии, аналитика")
+    Container(notifyService, "Notification Service", "NodeJS", "Push-уведомления, email, SMS")
+    
+    ContainerDb(userDb, "User Database", "PostgreSQL", "Профили пользователей, подписки")
+    ContainerDb(deviceDb, "Device Database", "PostgreSQL", "Каталог устройств, конфигурации")
+    ContainerDb(automationDb, "Automation Database", "PostgreSQL", "Сценарии, правила")
+    ContainerDb(redis, "Cache & Session Store", "Redis", "Кеш состояний, сессии")
+    ContainerDb(influxDb, "Time Series Database", "InfluxDB", "Телеметрия, временные ряды")
+    
+    Container(messageQueue, "Message Queue", "Apache Kafka", "Асинхронная связь между сервисами")
+}
+
+System_Ext(smartDevices, "Smart Devices", "Устройства умного дома (Zigbee, Z-Wave, WiFi)")
+System_Ext(partnerSystems, "Partner Systems", "API партнеров, каталоги устройств")
+System_Ext(cloudServices, "Cloud Services", "Email, SMS, Push-уведомления")
+
+' Relationships - Client to Gateway
+Rel(customer, mobileApp, "Использует")
+Rel(customer, webApp, "Использует")
+Rel(partner, partnerApp, "Использует")
+
+Rel(mobileApp, apiGateway, "API calls", "HTTPS")
+Rel(webApp, apiGateway, "API calls", "HTTPS")
+Rel(partnerApp, apiGateway, "API calls", "HTTPS")
+
+' Relationships - Gateway to Services
+Rel(apiGateway, userService, "Управление пользователями", "HTTP")
+Rel(apiGateway, deviceService, "Управление устройствами", "HTTP")
+Rel(apiGateway, autoService, "Автоматизация", "HTTP")
+Rel(apiGateway, telemetryService, "Получение данных", "HTTP")
+Rel(apiGateway, notifyService, "Уведомления", "HTTP")
+
+' Relationships - Services to Databases
+Rel(userService, userDb, "Читает/записывает", "TCP/SQL")
+Rel(deviceService, deviceDb, "Читает/записывает", "TCP/SQL")
+Rel(autoService, automationDb, "Читает/записывает", "TCP/SQL")
+
+Rel(commService, redis, "Кеширует состояния", "Redis Protocol")
+Rel(telemetryService, influxDb, "Записывает метрики", "InfluxDB API")
+
+' Relationships - Services communication
+Rel(deviceService, commService, "Команды устройствам", "HTTP")
+Rel(commService, messageQueue, "События устройств", "Kafka")
+Rel(autoService, messageQueue, "События автоматизации", "Kafka")
+Rel(telemetryService, messageQueue, "Получает телеметрию", "Kafka")
+Rel(notifyService, messageQueue, "Получает события", "Kafka")
+
+' External connections
+Rel(commService, smartDevices, "Протоколы IoT", "Zigbee/Z-Wave/WiFi")
+Rel(deviceService, partnerSystems, "Каталог устройств", "HTTP API")
+Rel(notifyService, cloudServices, "Email/SMS/Push", "HTTPS")
+
+@enduml

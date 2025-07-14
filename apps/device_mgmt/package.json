@@ -1,0 +1,26 @@
+{
+  "name": "device-management",
+  "version": "1.0.0",
+  "description": "Device Management Service with Kafka integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "kafkajs": "^2.2.4",
+    "pg": "^8.10.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "commonjs",
+  "author": "",
+  "license": "ISC"
+}

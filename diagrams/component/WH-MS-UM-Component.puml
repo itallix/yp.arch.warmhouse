@@ -1,0 +1,52 @@
+@startuml C4_Component_UserManagementService
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram - User Management Service
+
+Container_Boundary(ums, "User Management Service") {
+    Component(authController, "Auth Controller", "REST API", "Вход, регистрация, JWT токены")
+    Component(userController, "User Controller", "REST API", "Профили пользователей, CRUD операции")
+    
+    Component(authService, "Auth Service", "Business Logic", "Аутентификация, пароли, JWT")
+    Component(userService, "User Service", "Business Logic", "Управление пользователями и подписками")
+    
+    Component(userRepository, "User Repository", "Data Access", "CRUD операции с базой данных")
+    Component(tokenManager, "Token Manager", "Security", "Генерация и валидация JWT")
+    Component(passwordManager, "Password Manager", "Security", "Хеширование паролей")
+    
+    Component(emailSender, "Email Sender", "Integration", "Отправка email уведомлений")
+}
+
+ContainerDb(database, "PostgreSQL", "Database", "Пользователи, подписки, сессии")
+Container_Ext(emailService, "Email Service", "SendGrid/SMTP", "Внешний email провайдер")
+
+Container_Ext(apiGateway, "API Gateway", "Entry Point", "Маршрутизация запросов")
+Container_Ext(deviceService, "Device Management", "Microservice", "Проверка прав доступа")
+Container_Ext(automationService, "Automation Service", "Microservice", "Авторизация сценариев")
+
+' API connections
+Rel(apiGateway, authController, "Auth requests", "HTTPS")
+Rel(apiGateway, userController, "User requests", "HTTPS")
+
+' Controller to Service
+Rel(authController, authService, "Authentication logic")
+Rel(userController, userService, "User management")
+
+' Service dependencies
+Rel(authService, tokenManager, "JWT операции")
+Rel(authService, passwordManager, "Хеширование паролей")
+Rel(authService, userRepository, "Поиск пользователей")
+Rel(userService, userRepository, "User CRUD")
+Rel(userService, emailSender, "Нотификации")
+
+' Data access
+Rel(userRepository, database, "Чтение/запись", "PostgreSQL")
+
+' External integrations
+Rel(emailSender, emailService, "Доставка Email", "SMTP/API")
+
+' Service-to-service calls
+Rel(deviceService, authController, "Token validation", "HTTP")
+Rel(automationService, authController, "User authorization", "HTTP")
+
+@enduml

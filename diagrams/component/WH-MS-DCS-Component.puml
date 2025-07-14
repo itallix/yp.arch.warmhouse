@@ -1,0 +1,69 @@
+@startuml C4_Component_DeviceCommunicationService
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Component Diagram - Device Communication Service
+
+Container_Boundary(dcs, "Device Communication Service") {
+    Component(api, "Communication API", "REST/WebSocket", "Внешний интерфейс для команд и событий")
+    Component(commandProcessor, "Command Processor", "Go", "Обработка и валидация команд устройствам")
+    Component(eventListener, "Event Listener", "Go", "Прослушивание событий от устройств")
+    Component(stateCacheManager, "State Cache Manager", "Go", "Управление кешем состояний устройств")
+    Component(healthMonitor, "Health Monitor", "Go", "Мониторинг доступности устройств")
+    
+    Component(wifiHandler, "WiFi/MQTT Handler", "Go", "Обработка WiFi устройств через MQTT")
+    
+    Component(protocolAdapter, "Protocol Adapter", "Go", "Универсальный адаптер протоколов")
+    Component(commandQueue, "Command Queue Manager", "Go", "Управление очередями команд")
+    Component(circuitBreaker, "Circuit Breaker", "Go", "Защита от каскадных отказов")
+    Component(metricsCollector, "Metrics Collector", "Go", "Сбор метрик производительности")
+}
+
+ContainerDb(redis, "Redis Cache", "Redis", "Кеш состояний устройств и очереди команд")
+Container(messageQueue, "Message Queue", "Apache Kafka", "Асинхронное взаимодействие с другими сервисами")
+
+System_Ext(wifiDevices, "WiFi Devices", "Умные устройства с WiFi/MQTT")
+
+Container_Ext(deviceMgmt, "Device Management Service", "Go", "Управление каталогом устройств")
+Container_Ext(automation, "Automation Service", "Go", "Сценарии автоматизации")
+Container_Ext(telemetry, "Telemetry Service", "Go", "Сбор телеметрии")
+
+' API connections
+Rel(deviceMgmt, api, "Отправка команд", "HTTP/REST")
+Rel(automation, api, "Выполнение сценариев", "HTTP/REST")
+
+' Internal component relationships
+Rel(api, commandProcessor, "Маршрутизация команд")
+Rel(commandProcessor, protocolAdapter, "Форматирование команд")
+Rel(protocolAdapter, wifiHandler, "WiFi/MQTT команды")
+
+Rel(eventListener, wifiHandler, "События WiFi/MQTT")
+
+Rel(eventListener, stateCacheManager, "Обновление состояний")
+Rel(commandProcessor, stateCacheManager, "Проверка состояний")
+Rel(commandProcessor, commandQueue, "Управление очередями")
+Rel(commandProcessor, circuitBreaker, "Защита от отказов")
+
+Rel(healthMonitor, protocolAdapter, "Проверка доступности")
+Rel(healthMonitor, stateCacheManager, "Обновление статуса")
+
+Rel(metricsCollector, commandProcessor, "Метрики команд")
+Rel(metricsCollector, eventListener, "Метрики событий")
+
+' External connections
+Rel(wifiHandler, wifiDevices, "Команды/События", "MQTT/HTTP")
+
+' Data store connections
+Rel(stateCacheManager, redis, "Кеш состояний", "Redis Protocol")
+Rel(commandQueue, redis, "Очереди команд", "Redis Protocol")
+Rel(circuitBreaker, redis, "Статус breaker'ов", "Redis Protocol")
+
+' Message queue connections
+Rel(eventListener, messageQueue, "События устройств", "Kafka")
+Rel(commandProcessor, messageQueue, "Результаты команд", "Kafka")
+Rel(healthMonitor, messageQueue, "События доступности", "Kafka")
+Rel(metricsCollector, messageQueue, "Метрики", "Kafka")
+
+Rel(messageQueue, telemetry, "Данные телеметрии", "Kafka")
+Rel(messageQueue, automation, "Триггеры событий", "Kafka")
+
+@enduml

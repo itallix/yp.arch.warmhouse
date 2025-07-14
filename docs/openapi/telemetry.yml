@@ -1,0 +1,199 @@
+openapi: 3.0.3
+info:
+  title: Telemetry Service API
+  version: 1.0.0
+  description: API для работы с телеметрией устройств
+servers:
+  - url: https://api.warmhouse.com/v1
+paths:
+  /telemetry:
+    get:
+      summary: Получить данные телеметрии
+      operationId: getTelemetry
+      tags:
+        - Telemetry
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: metric
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: aggregation
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [avg, min, max, sum, count]
+            default: avg
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 1d]
+            default: 15m
+      responses:
+        '200':
+          description: Данные телеметрии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                    format: uuid
+                  metric:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                          format: date-time
+                        value:
+                          type: number
+              examples:
+                temperature_data:
+                  value:
+                    device_id: "550e8400-e29b-41d4-a716-446655440000"
+                    metric: "temperature"
+                    data:
+                      - timestamp: "2024-01-15T10:00:00Z"
+                        value: 22.1
+                      - timestamp: "2024-01-15T10:15:00Z"
+                        value: 22.3
+                      - timestamp: "2024-01-15T10:30:00Z"
+                        value: 22.5
+        '400':
+          description: Некорректные параметры запроса
+        '404':
+          description: Устройство не найдено
+    
+    post:
+      summary: Записать данные телеметрии
+      operationId: writeTelemetry
+      tags:
+        - Telemetry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_id:
+                  type: string
+                  format: uuid
+                timestamp:
+                  type: string
+                  format: date-time
+                metrics:
+                  type: object
+                  additionalProperties:
+                    type: number
+            examples:
+              sensor_data:
+                value:
+                  device_id: "550e8400-e29b-41d4-a716-446655440000"
+                  timestamp: "2024-01-15T10:35:00Z"
+                  metrics:
+                    temperature: 22.7
+                    humidity: 46
+                    pressure: 1013.25
+      responses:
+        '201':
+          description: Данные успешно записаны
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  points_written:
+                    type: integer
+              examples:
+                success:
+                  value:
+                    message: "Telemetry data written successfully"
+                    points_written: 3
+        '400':
+          description: Некорректные данные
+        '422':
+          description: Ошибка валидации данных
+
+  /telemetry/analytics:
+    get:
+      summary: Получить аналитические данные
+      operationId: getAnalytics
+      tags:
+        - Analytics
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [energy_consumption, temperature_trends, usage_patterns]
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: week
+      responses:
+        '200':
+          description: Аналитические данные
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  period:
+                    type: string
+                  data:
+                    type: object
+                    additionalProperties: true
+              examples:
+                energy_consumption:
+                  value:
+                    type: "energy_consumption"
+                    period: "week"
+                    data:
+                      total_kwh: 45.7
+                      daily_average: 6.5
+                      peak_hour: "19:00"
+                      devices_breakdown:
+                        heating: 28.5
+                        lighting: 8.2
+                        appliances: 9.0

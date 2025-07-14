@@ -1,0 +1,326 @@
+@startuml C4_Code_Go_UserManagementService
+
+package "main" {
+  class main {
+    +main()
+    -setupServer(): *Server
+    -setupDatabase(): *sql.DB
+    -loadConfig(): *Config
+  }
+}
+
+package "config" {
+  class Config {
+    +ServerPort: string `yaml:"server_port"`
+    +DatabaseURL: string `yaml:"database_url"`
+    +JWTSecret: string `yaml:"jwt_secret"`
+    +EmailConfig: EmailConfig `yaml:"email"`
+    +LoadFromFile(path string): error
+    +Validate(): error
+  }
+  
+  class EmailConfig {
+    +SMTPHost: string `yaml:"smtp_host"`
+    +SMTPPort: int `yaml:"smtp_port"`
+    +Username: string `yaml:"username"`
+    +Password: string `yaml:"password"`
+    +FromEmail: string `yaml:"from_email"`
+  }
+}
+
+package "server" {
+  class Server {
+    -router: *gin.Engine
+    -authController: *AuthController
+    -userController: *UserController
+    -db: *sql.DB
+    -config: *Config
+    +Start() error
+    +Stop() error
+    +setupRoutes()
+    +setupMiddleware()
+  }
+}
+
+package "controllers" {
+  class AuthController {
+    -authService: *AuthService
+    -logger: *logrus.Logger
+    +Register(c *gin.Context)
+    +Login(c *gin.Context)
+    +RefreshToken(c *gin.Context)
+    +GetMe(c *gin.Context)
+    -bindAndValidate(c *gin.Context, req interface{}): error
+    -sendErrorResponse(c *gin.Context, code int, message string)
+    -sendSuccessResponse(c *gin.Context, data interface{})
+  }
+  
+  class UserController {
+    -userService: *UserService
+    -logger: *logrus.Logger
+    +GetProfile(c *gin.Context)
+    +UpdateProfile(c *gin.Context)
+    +ChangePassword(c *gin.Context)
+    +DeleteAccount(c *gin.Context)
+    -extractUserID(c *gin.Context): (string, error)
+    -bindAndValidate(c *gin.Context, req interface{}): error
+  }
+}
+
+package "services" {
+  class AuthService {
+    -userRepo: UserRepository
+    -tokenManager: *TokenManager
+    -passwordManager: *PasswordManager
+    -emailSender: *EmailSender
+    -logger: *logrus.Logger
+    +Register(ctx context.Context, req *RegisterRequest): (*AuthResponse, error)
+    +Login(ctx context.Context, req *LoginRequest): (*AuthResponse, error)
+    +RefreshToken(ctx context.Context, refreshToken string): (*AuthResponse, error)
+    +ValidateToken(ctx context.Context, token string): (*User, error)
+    +GetUserByID(ctx context.Context, userID string): (*User, error)
+    -hashPassword(password string): (string, error)
+    -checkPassword(password, hash string): bool
+    -sendWelcomeEmail(user *User): error
+  }
+  
+  class UserService {
+    -userRepo: UserRepository
+    -passwordManager: *PasswordManager
+    -emailSender: *EmailSender
+    -logger: *logrus.Logger
+    +GetProfile(ctx context.Context, userID string): (*User, error)
+    +UpdateProfile(ctx context.Context, userID string, req *UpdateProfileRequest): (*User, error)
+    +ChangePassword(ctx context.Context, userID string, req *ChangePasswordRequest): error
+    +DeleteAccount(ctx context.Context, userID string): error
+    +UpgradeSubscription(ctx context.Context, userID string, plan SubscriptionPlan): error
+    -validateEmail(email string): error
+    -sendNotificationEmail(user *User, subject, body string): error
+  }
+}
+
+package "models" {
+  class User {
+    +ID: string `json:"id" db:"id"`
+    +Email: string `json:"email" db:"email"`
+    +Name: string `json:"name" db:"name"`
+    +PasswordHash: string `json:"-" db:"password_hash"`
+    +Role: UserRole `json:"role" db:"role"`
+    +Subscription: SubscriptionPlan `json:"subscription" db:"subscription"`
+    +IsActive: bool `json:"is_active" db:"is_active"`
+    +CreatedAt: time.Time `json:"created_at" db:"created_at"`
+    +UpdatedAt: time.Time `json:"updated_at" db:"updated_at"`
+    +Validate() error
+    +IsAdmin(): bool
+    +CanAccessDevice(deviceID string): bool
+    +GetDisplayName(): string
+  }
+  
+  class RegisterRequest {
+    +Email: string `json:"email" validate:"required,email"`
+    +Password: string `json:"password" validate:"required,min=8"`
+    +Name: string `json:"name" validate:"required,min=2"`
+    +Validate() error
+  }
+  
+  class LoginRequest {
+    +Email: string `json:"email" validate:"required,email"`
+    +Password: string `json:"password" validate:"required"`
+    +Validate() error
+  }
+  
+  class UpdateProfileRequest {
+    +Name: string `json:"name" validate:"omitempty,min=2"`
+    +Email: string `json:"email" validate:"omitempty,email"`
+    +Validate() error
+  }
+  
+  class ChangePasswordRequest {
+    +CurrentPassword: string `json:"current_password" validate:"required"`
+    +NewPassword: string `json:"new_password" validate:"required,min=8"`
+    +Validate() error
+  }
+  
+  class AuthResponse {
+    +User: *User `json:"user"`
+    +AccessToken: string `json:"access_token"`
+    +RefreshToken: string `json:"refresh_token"`
+    +ExpiresIn: int64 `json:"expires_in"`
+  }
+  
+  enum UserRole {
+    USER
+    ADMIN
+  }
+  
+  enum SubscriptionPlan {
+    FREE
+    BASIC
+    PREMIUM
+  }
+}
+
+package "repository" {
+  interface UserRepository {
+    +Create(ctx context.Context, user *User): error
+    +GetByID(ctx context.Context, id string): (*User, error)
+    +GetByEmail(ctx context.Context, email string): (*User, error)
+    +Update(ctx context.Context, user *User): error
+    +Delete(ctx context.Context, id string): error
+    +UpdateLastLogin(ctx context.Context, userID string): error
+  }
+  
+  class PostgreSQLUserRepository {
+    -db: *sql.DB
+    -logger: *logrus.Logger
+    +Create(ctx context.Context, user *User): error
+    +GetByID(ctx context.Context, id string): (*User, error)
+    +GetByEmail(ctx context.Context, email string): (*User, error)
+    +Update(ctx context.Context, user *User): error
+    +Delete(ctx context.Context, id string): error
+    +UpdateLastLogin(ctx context.Context, userID string): error
+    -scanUser(row *sql.Row): (*User, error)
+    -scanUsers(rows *sql.Rows): ([]*User, error)
+  }
+}
+
+package "security" {
+  class TokenManager {
+    -jwtSecret: []byte
+    -accessTokenDuration: time.Duration
+    -refreshTokenDuration: time.Duration
+    +GenerateAccessToken(user *User): (string, error)
+    +GenerateRefreshToken(userID string): (string, error)
+    +ValidateAccessToken(token string): (*TokenClaims, error)
+    +ValidateRefreshToken(token string): (*TokenClaims, error)
+    -generateToken(claims *TokenClaims, duration time.Duration): (string, error)
+    -parseToken(token string): (*TokenClaims, error)
+  }
+  
+  class TokenClaims {
+    +UserID: string `json:"user_id"`
+    +Email: string `json:"email"`
+    +Role: UserRole `json:"role"`
+    +TokenType: string `json:"token_type"`
+    +jwt.StandardClaims
+    +Valid() error
+  }
+  
+  class PasswordManager {
+    -cost: int
+    +HashPassword(password string): (string, error)
+    +CheckPassword(password, hash string): bool
+    +GenerateRandomPassword(length int): string
+    +ValidatePasswordStrength(password string): error
+  }
+}
+
+package "email" {
+  class EmailSender {
+    -config: *EmailConfig
+    -logger: *logrus.Logger
+    +SendWelcomeEmail(user *User): error
+    +SendPasswordResetEmail(user *User, resetToken string): error
+    +SendNotificationEmail(to, subject, body string): error
+    -sendEmail(to, subject, body string): error
+    -buildWelcomeTemplate(user *User): string
+    -buildPasswordResetTemplate(user *User, resetToken string): string
+  }
+  
+  class EmailTemplate {
+    +Subject: string
+    +Body: string
+    +ToHTML(): string
+    +ToPlainText(): string
+  }
+}
+
+package "middleware" {
+  class AuthMiddleware {
+    -tokenManager: *TokenManager
+    -userRepo: UserRepository
+    -logger: *logrus.Logger
+    +RequireAuth(): gin.HandlerFunc
+    +RequireRole(role UserRole): gin.HandlerFunc
+    +OptionalAuth(): gin.HandlerFunc
+    -extractToken(c *gin.Context): string
+    -setUserContext(c *gin.Context, user *User)
+  }
+  
+  class ValidationMiddleware {
+    +ValidateJSON() gin.HandlerFunc
+    +ValidateQuery() gin.HandlerFunc
+    +SanitizeInput() gin.HandlerFunc
+  }
+  
+  class LoggingMiddleware {
+    -logger: *logrus.Logger
+    +RequestLogger(): gin.HandlerFunc
+    +ErrorLogger(): gin.HandlerFunc
+  }
+}
+
+package "errors" {
+  class AppError {
+    +Code: string `json:"code"`
+    +Message: string `json:"message"`
+    +Details: map[string]interface{} `json:"details,omitempty"`
+    +HTTPStatus: int `json:"-"`
+    +Error(): string
+    +WithDetails(details map[string]interface{}): *AppError
+  }
+  
+  class ErrorHandler {
+    -logger: *logrus.Logger
+    +HandleError(c *gin.Context, err error)
+    +NewValidationError(message string): *AppError
+    +NewAuthenticationError(message string): *AppError
+    +NewNotFoundError(resource string): *AppError
+    +NewInternalError(message string): *AppError
+  }
+}
+
+' Relationships
+main --> Server : creates
+main --> Config : loads
+
+Server --> AuthController : uses
+Server --> UserController : uses
+Server --> AuthMiddleware : uses
+
+AuthController --> AuthService : uses
+UserController --> UserService : uses
+
+AuthService --> UserRepository : uses
+AuthService --> TokenManager : uses
+AuthService --> PasswordManager : uses
+AuthService --> EmailSender : uses
+
+UserService --> UserRepository : uses
+UserService --> PasswordManager : uses
+UserService --> EmailSender : uses
+
+PostgreSQLUserRepository ..|> UserRepository : implements
+
+AuthService --> User : manages
+UserService --> User : manages
+
+AuthController --> RegisterRequest : processes
+AuthController --> LoginRequest : processes
+AuthController --> AuthResponse : returns
+
+UserController --> UpdateProfileRequest : processes
+UserController --> ChangePasswordRequest : processes
+
+TokenManager --> TokenClaims : creates
+EmailSender --> EmailTemplate : uses
+
+AuthMiddleware --> TokenManager : uses
+AuthMiddleware --> UserRepository : uses
+
+User --> UserRole : has
+User --> SubscriptionPlan : has
+
+Config --> EmailConfig : contains
+
+@enduml

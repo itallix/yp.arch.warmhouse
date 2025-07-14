@@ -1,0 +1,26 @@
+@startuml C4_Context_WarmHouse_Monolith
+!include  https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+' Определение элементов системы
+Person(user, "Пользователь", "Конечный пользователь системы")
+Person(admin, "Администратор", "Администратор системы")
+System(monolith, "Cистема WarmHouse", "Основная система обработки данных и управления")
+
+' Внешние системы - датчики
+System_Ext(temp_sensor, "Датчик температуры", "Измеряет температуру окружающей среды")
+System_Ext(pressure_sensor, "Датчик давления", "Измеряет атмосферное давление")
+System_Ext(humidity_sensor, "Датчик влажности", "Измеряет влажность воздуха")
+System_Ext(motion_sensor, "Датчик движения", "Определяет движение объектов")
+
+' Определение взаимодействий
+Rel(user, monolith, "Просматривает данные c сенсоров", "HTTPS/Web UI")
+Rel(admin, monolith, "Регистрирует датчики", "HTTPS/REST API")
+Rel(monolith, temp_sensor, "Получает данные\nо температуре", "HTTP")
+Rel(monolith, pressure_sensor, "Получает данные\nо давлении", "HTTP")
+Rel(monolith, humidity_sensor, "Получает данные\nо влажности", "HTTP")
+Rel(monolith, motion_sensor, "Получает сигналы\nо движении", "HTTP")
+
+' Дополнительные настройки
+SHOW_PERSON_PORTRAIT()
+
+@enduml

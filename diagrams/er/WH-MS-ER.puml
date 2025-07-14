@@ -1,0 +1,130 @@
+@startuml ER_Diagram_CoreEntities
+
+' Пользователи
+entity "users" {
+  * id : UUID <<PK>>
+  --
+  * email : VARCHAR(255) <<UNIQUE>>
+  * password_hash : VARCHAR(255)
+  * name : VARCHAR(100)
+  * role : ENUM('user', 'admin')
+  * subscription : ENUM('free', 'premium')
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' Дома
+entity "houses" {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * name : VARCHAR(100)
+  * address : TEXT
+  * timezone : VARCHAR(50)
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' Типы устройств
+entity "device_types" {
+  * id : UUID <<PK>>
+  --
+  * name : VARCHAR(50) <<UNIQUE>>
+  * category : ENUM('lighting', 'climate', 'security', 'entertainment', 'sensors')
+  * description : TEXT
+  * icon : VARCHAR(100)
+  * capabilities : JSONB
+  * created_at : TIMESTAMP
+}
+
+' Модули (готовые комплекты устройств)
+entity "modules" {
+  * id : UUID <<PK>>
+  --
+  * name : VARCHAR(100)
+  * description : TEXT
+  * category : ENUM('starter_kit', 'lighting_kit', 'security_kit', 'climate_kit')
+  * price : DECIMAL(10,2)
+  * is_active : BOOLEAN
+  * device_types : JSONB
+  * installation_guide : TEXT
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' Устройства
+entity "devices" {
+  * id : UUID <<PK>>
+  --
+  * house_id : UUID <<FK>>
+  * device_type_id : UUID <<FK>>
+  * module_id : UUID <<FK>>
+  * name : VARCHAR(100)
+  * manufacturer : VARCHAR(100)
+  * model : VARCHAR(100)
+  * mqtt_topic : VARCHAR(255) <<UNIQUE>>
+  * is_online : BOOLEAN
+  * current_state : JSONB
+  * configuration : JSONB
+  * room_location : VARCHAR(100)
+  * installed_at : TIMESTAMP
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' Телеметрия
+entity "telemetry_data" {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  * metric_name : VARCHAR(50)
+  * value : DECIMAL(12,4)
+  * unit : VARCHAR(20)
+  * timestamp : TIMESTAMP
+  * created_at : TIMESTAMP
+}
+
+' Команды (оставляем для управления)
+entity "commands" {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  * user_id : UUID <<FK>>
+  * action : VARCHAR(50)
+  * parameters : JSONB
+  * status : ENUM('pending', 'completed', 'failed')
+  * created_at : TIMESTAMP
+  * completed_at : TIMESTAMP
+}
+
+' Автоматизация (упрощенная)
+entity "automations" {
+  * id : UUID <<PK>>
+  --
+  * house_id : UUID <<FK>>
+  * user_id : UUID <<FK>>
+  * name : VARCHAR(100)
+  * trigger_device_id : UUID <<FK>>
+  * trigger_condition : JSONB
+  * actions : JSONB
+  * is_active : BOOLEAN
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+' Связи между таблицами
+users ||--o{ houses : "owns"
+houses ||--o{ devices : "contains"
+houses ||--o{ automations : "has"
+
+device_types ||--o{ devices : "defines"
+modules ||--o{ devices : "includes"
+
+devices ||--o{ telemetry_data : "generates"
+devices ||--o{ commands : "receives"
+devices ||--o{ automations : "triggers"
+
+users ||--o{ commands : "executes"
+users ||--o{ automations : "creates"
+
+@enduml
