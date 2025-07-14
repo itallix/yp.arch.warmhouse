@@ -1,8 +1,10 @@
+from datetime import datetime, timezone
+import random
+from typing import Optional
+import uuid
+
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
-import random
-import uuid
-from datetime import datetime, timezone
 
 app = FastAPI(
     title="Temperature API",
@@ -31,13 +33,18 @@ async def root():
         }
     }
 
-@app.get("/temperature", response_model=TemperatureResponse)
-async def get_temperature(location: str = Query(..., description="Название местоположения")):
+@app.get("/temperature/{sensor_id}", response_model=TemperatureResponse)
+@app.get("/temperature", response_model=TemperatureResponse) 
+async def get_temperature(
+    sensor_id: Optional[str] = None,
+    location: str = Query("unspecified", description="Название местоположения (опционально)")
+):
     """
     Получить случайную температуру для указанного местоположения
     
     Args:
-        location: Название местоположения (обязательный параметр)
+        sensor_id: ID датчика (опциональный параметр)
+        location: Название местоположения (опциональный параметр)
     
     Returns:
         JSON с информацией о температуре
@@ -45,8 +52,8 @@ async def get_temperature(location: str = Query(..., description="Названи
     # Генерируем случайную температуру в диапазоне от -30 до +40 градусов
     temperature_value = round(random.uniform(-30.0, 40.0), 1)
     
-    # Генерируем уникальный ID датчика
-    sensor_id = f"TEMP_{uuid.uuid4().hex[:8].upper()}"
+    if not sensor_id:
+        sensor_id = f"TEMP_{uuid.uuid4().hex[:8].upper()}"
     
     # Создаем описание
     description = f"Temperature reading from sensor {sensor_id} at {location}"

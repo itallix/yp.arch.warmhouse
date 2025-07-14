@@ -50,7 +50,7 @@ func (s *DeviceService) CreateDevice(sensor *models.SensorCreate) (*models.Senso
 }
 
 func (s *DeviceService) GetDeviceByID(sensorID int) (*models.Sensor, error) {
-	resp, err := s.HTTPClient.Get(fmt.Sprintf("%s/%s", s.BaseURL, sensorID))
+	resp, err := s.HTTPClient.Get(fmt.Sprintf("%s/%d", s.BaseURL, sensorID))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sensor data: %w", err)
 	}

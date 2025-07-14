@@ -81,7 +81,7 @@ func (h *SensorHandler) GetSensorByID(c *gin.Context) {
 
 	sensor, err := h.DeviceService.GetDeviceByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Sensor not found"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
